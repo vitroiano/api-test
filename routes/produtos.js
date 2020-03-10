@@ -9,9 +9,25 @@ router.get('/', (req, res, next) => {
         if(error){ return res.status(500).send({ error: error }) }
         conn.query(
             'SELECT * FROM produtos;',
-            (error, resultado, fields) => {
+            (error, result, fields) => {
                 if(error){ return res.status(500).send({ error: error }) }
-                return res.status(200).send({response: resultado})
+                const response = {
+                    quantidade: result.length,
+                    produtos: result.map(prod => {
+                        return{
+                            id_produtos: prod.id_produtos,
+                            nome: prod.nome,
+                            preco: prod.preco,
+                            request: {
+                                tipo: 'GET',
+                                descricao: 'Retorna o detalhe de um produto em especifico',
+                                url: 'http://localhost:1000/produtos/' + prod.id_produtos
+                            }
+                            
+                        }
+                    })
+                }
+                return res.status(200).send({response: response});
             }
         )
     });
@@ -28,9 +44,28 @@ router.get('/:id_produto', (req, res, next) => {
         conn.query(
             'SELECT * FROM produtos WHERE id_produtos = ?;',
             [req.params.id_produto],
-            (error, resultado, fields) => {
+            (error, result, fields) => {
                 if(error){ return res.status(500).send({ error: error }) }
-                return res.status(200).send({response: resultado})
+                // somente entrar, se nao tiver resultados
+                if(result.length <= 0){
+                    return res.status(404).send({
+                        mensagem: 'Não foi encontrado produto com este ID'
+                    })
+                }
+                
+                const response = {
+                    produto: {
+                        id_produto: result[0].id_produtos,
+                        nome: result[0].nome,
+                        preco: result[0].preco,
+                        request: {
+                            tipo: 'GET',
+                            descricao: 'Retorna todos os produtos',
+                            url: 'http://localhost:1000/produtos/'
+                        }   
+                    }
+                }
+                return res.status(200).send({response: response});
             }
         )
     });
@@ -47,15 +82,24 @@ router.post('/', (req, res, next) => {
         conn.query(
             'INSERT INTO produtos (nome, preco) VALUES (?, ?)',
             [req.body.nome, req.body.preco],
-            (error, resultado, field) => {
+            (error, result, field) => {
                 conn.release();
 
                 if(error){ return res.status(500).send({ error: error }) }
-
-                res.status(201).send({
-                    mensagem: 'Produto inserido com sucesso!',
-                    id_produto: resultado.insertId
-                });
+                const response = {
+                    mensagem: 'Produto inserido com sucesso',
+                    produtoCriado: {
+                        id_produtos: result.id_produtos,
+                        nome: req.body.nome,
+                        preco: req.body.preco,
+                        request: {
+                            tipo: 'GET',
+                            descricao: 'Retorna todos os produtos',
+                            url: 'http://localhost:1000/produtos/'
+                        }
+                    }
+                }
+                res.status(201).send(response);
             }    
         )
     });
@@ -82,9 +126,20 @@ router.patch('/', (req, res, next) => {
 
                 if(error){ return res.status(500).send({ error: error }) }
 
-                res.status(202).send({
-                    mensagem: 'Produto alterado com sucesso!'
-                });
+                const response = {
+                    mensagem: 'Produto alterado com sucesso',
+                    produtoAlterado: {
+                        id_produtos: req.body.id_produtos,
+                        nome: req.body.nome,
+                        preco: req.body.preco,
+                        request: {
+                            tipo: 'GET',
+                            descricao: 'Retorna o detalhe de um produto em especifico',
+                            url: 'http://localhost:1000/produtos/' + req.body.id_produtos
+                        }
+                    }
+                }
+                res.status(202).send(response);
             }    
         )
     });
@@ -98,19 +153,25 @@ router.delete('/', (req, res, next) => {
 
         conn.query(
             'DELETE FROM produtos WHERE id_produtos  = ?',
-            [
-                req.body.nome, 
-                req.body.preco,
-                req.body.id_produtos
-            ],
+            [req.body.id_produtos],
             (error, resultado, field) => {
+                // console.log(error);
                 conn.release();
 
                 if(error){ return res.status(500).send({ error: error }) }
-
-                res.status(202).send({
-                    mensagem: 'Produto removido com sucesso!'
-                });
+                const response = {
+                    mensagem: 'Produto removido com sucesso!',
+                    request: {
+                        tipo: 'POST',
+                        descricao: 'Insere um produto',
+                        url: 'http://localhost:1000/produtos/',
+                        body: {
+                            nome: 'String',
+                            preco: 'Number'
+                        }
+                    }
+                }
+                return res.status(202).send(response);
             }    
         )
     });
